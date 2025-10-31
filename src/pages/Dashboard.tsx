@@ -1,16 +1,33 @@
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Activity, TrendingUp, Shield, Plus, BarChart3 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { loadMetrics, loadSessions } from "@/lib/athleteVision";
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const [metrics, setMetrics] = useState(() => loadMetrics());
+  const [recentSessions, setRecentSessions] = useState(() => {
+    const sessions = loadSessions();
+    return sessions.slice(-3).reverse();
+  });
 
-  // Mock data for demo
-  const trainingLoad = 72;
-  const recoveryIndex = 65;
-  const injuryRisk = 35;
+  useEffect(() => {
+    // Refresh data when page becomes visible
+    const handleFocus = () => {
+      setMetrics(loadMetrics());
+      const sessions = loadSessions();
+      setRecentSessions(sessions.slice(-3).reverse());
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, []);
+
+  const trainingLoad = metrics?.tl_7d || 0;
+  const recoveryIndex = metrics?.recovery_index || 0;
+  const injuryRisk = Math.round((metrics?.injury_risk || 0) * 100);
 
   const getRiskColor = (risk: number) => {
     if (risk < 40) return "text-success";
@@ -119,19 +136,19 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {[
-                  { date: "Today", activity: "Running - Easy", duration: "45 min", rpe: 4 },
-                  { date: "Yesterday", activity: "Strength Training", duration: "60 min", rpe: 7 },
-                  { date: "2 days ago", activity: "Running - Intervals", duration: "50 min", rpe: 8 },
-                ].map((session, i) => (
+                {recentSessions.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No training sessions yet. Add your first session to get started!
+                  </p>
+                ) : recentSessions.map((session, i) => (
                   <div key={i} className="flex items-center justify-between py-3 border-b last:border-0">
                     <div>
-                      <p className="font-medium text-foreground">{session.activity}</p>
+                      <p className="font-medium text-foreground">{session.sport}</p>
                       <p className="text-sm text-muted-foreground">{session.date}</p>
                     </div>
                     <div className="text-right">
-                      <p className="font-medium text-foreground">{session.duration}</p>
-                      <p className="text-sm text-muted-foreground">RPE: {session.rpe}/10</p>
+                      <p className="font-medium text-foreground">{session.duration_min} min</p>
+                      <p className="text-sm text-muted-foreground">RPE: {session.rpe_1_10}/10</p>
                     </div>
                   </div>
                 ))}

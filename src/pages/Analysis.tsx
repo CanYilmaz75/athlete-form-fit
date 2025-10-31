@@ -1,29 +1,22 @@
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { loadMetrics, loadSessions } from "@/lib/athleteVision";
 
 const Analysis = () => {
   const navigate = useNavigate();
-
-  // Mock data for charts
-  const rpeData = [
-    { day: "Mon", rpe: 4, load: 180 },
-    { day: "Tue", rpe: 6, load: 360 },
-    { day: "Wed", rpe: 3, load: 120 },
-    { day: "Thu", rpe: 7, load: 420 },
-    { day: "Fri", rpe: 5, load: 250 },
-    { day: "Sat", rpe: 8, load: 480 },
-    { day: "Sun", rpe: 4, load: 200 },
-  ];
-
-  const recoveryData = [
-    { week: "W1", hrv: 45, sleep: 6.5, recovery: 55 },
-    { week: "W2", hrv: 52, sleep: 7.2, recovery: 68 },
-    { week: "W3", hrv: 48, sleep: 6.8, recovery: 62 },
-    { week: "W4", hrv: 58, sleep: 7.8, recovery: 75 },
-  ];
+  const [metrics] = useState(() => loadMetrics());
+  const [chartData] = useState(() => {
+    const sessions = loadSessions().slice(-7);
+    return sessions.map(s => ({
+      day: new Date(s.date).toLocaleDateString('en-US', { weekday: 'short' }),
+      load: Math.round(s.duration_min * s.rpe_1_10),
+      rpe: s.rpe_1_10
+    }));
+  });
 
   return (
     <div className="min-h-screen bg-background">
@@ -53,7 +46,7 @@ const Analysis = () => {
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={rpeData}>
+                <BarChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                   <XAxis dataKey="day" className="text-xs" />
                   <YAxis yAxisId="left" className="text-xs" />
@@ -73,52 +66,16 @@ const Analysis = () => {
             </CardContent>
           </Card>
 
-          {/* Recovery Metrics Chart */}
+          {/* Recovery Metrics - Placeholder */}
           <Card>
             <CardHeader>
               <CardTitle>Recovery Metrics</CardTitle>
-              <CardDescription>HRV, sleep quality, and recovery index over time</CardDescription>
+              <CardDescription>Track metrics over time to see recovery trends</CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={recoveryData}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis dataKey="week" className="text-xs" />
-                  <YAxis className="text-xs" />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px'
-                    }}
-                  />
-                  <Legend />
-                  <Line 
-                    type="monotone" 
-                    dataKey="hrv" 
-                    stroke="hsl(var(--chart-1))" 
-                    strokeWidth={2}
-                    name="HRV (ms)"
-                    dot={{ fill: 'hsl(var(--chart-1))' }}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="sleep" 
-                    stroke="hsl(var(--chart-2))" 
-                    strokeWidth={2}
-                    name="Sleep (h)"
-                    dot={{ fill: 'hsl(var(--chart-2))' }}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="recovery" 
-                    stroke="hsl(var(--chart-3))" 
-                    strokeWidth={2}
-                    name="Recovery Index"
-                    dot={{ fill: 'hsl(var(--chart-3))' }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+              <p className="text-sm text-muted-foreground text-center py-8">
+                Add more sessions with HRV and sleep data to see recovery trends
+              </p>
             </CardContent>
           </Card>
 

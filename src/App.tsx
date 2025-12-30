@@ -5,7 +5,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import DataInput from "./pages/DataInput";
-import Analysis from "./pages/Analysis";
 import ImprovementPlan from "./pages/ImprovementPlan";
 import Feedback from "./pages/Feedback";
 import NotFound from "./pages/NotFound";
@@ -21,7 +20,6 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/data-input" element={<DataInput />} />
-          <Route path="/analysis" element={<Analysis />} />
           <Route path="/improvement-plan" element={<ImprovementPlan />} />
           <Route path="/feedback" element={<Feedback />} />
           <Route path="*" element={<NotFound />} />

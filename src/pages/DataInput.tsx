@@ -120,7 +120,13 @@ const DataInput = () => {
                   {/* Date */}
                   <div className="space-y-2">
                     <Label htmlFor="date">Date</Label>
-                    <Input id="date" type="date" defaultValue={new Date().toISOString().split('T')[0]} />
+                    <Input
+                      id="date"
+                      name="date"
+                      type="date"
+                      required
+                      defaultValue={new Date().toISOString().split('T')[0]}
+                    />
                   </div>
 
                   {/* Sport Type */}

@@ -75,7 +75,37 @@ export function saveSessions(sessions: TrainingSession[]): void {
 
 export function loadSessions(): TrainingSession[] {
   const data = localStorage.getItem(SESSIONS_KEY);
-  return data ? JSON.parse(data) : [];
+  if (!data) return [];
+
+  try {
+    const parsed = JSON.parse(data);
+    if (!Array.isArray(parsed)) return [];
+
+    const cleaned = parsed
+      .map((s: any) => ({
+        ...s,
+        duration_min: Number(s?.duration_min),
+        rpe_1_10: Number(s?.rpe_1_10),
+      }))
+      .filter((s: any) =>
+        typeof s?.date === "string" &&
+        s.date.length > 0 &&
+        typeof s?.sport === "string" &&
+        s.sport.length > 0 &&
+        Number.isFinite(s.duration_min) &&
+        Number.isFinite(s.rpe_1_10)
+      ) as TrainingSession[];
+
+    // Auto-clean old invalid entries (e.g. saved before the date field had a name attr)
+    if (cleaned.length !== parsed.length) {
+      localStorage.setItem(SESSIONS_KEY, JSON.stringify(cleaned));
+    }
+
+    return cleaned;
+  } catch {
+    localStorage.removeItem(SESSIONS_KEY);
+    return [];
+  }
 }
 
 export function saveMetrics(metrics: AnalyzeResponse): void {

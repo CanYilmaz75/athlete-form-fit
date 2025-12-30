@@ -2,20 +2,19 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Activity, TrendingUp, Shield, Plus, BarChart3 } from "lucide-react";
+import { Activity, TrendingUp, Shield, Plus, Zap, AlertTriangle, Lightbulb } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { loadMetrics, loadSessions } from "@/lib/athleteVision";
+import { loadMetrics, loadSessions, AnalyzeResponse } from "@/lib/athleteVision";
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const [metrics, setMetrics] = useState(() => loadMetrics());
+  const [metrics, setMetrics] = useState<AnalyzeResponse | null>(() => loadMetrics());
   const [recentSessions, setRecentSessions] = useState(() => {
     const sessions = loadSessions();
     return sessions.slice(-3).reverse();
   });
 
   useEffect(() => {
-    // Refresh data when page becomes visible
     const handleFocus = () => {
       setMetrics(loadMetrics());
       const sessions = loadSessions();
@@ -28,6 +27,8 @@ const Dashboard = () => {
   const trainingLoad = metrics?.tl_7d || 0;
   const recoveryIndex = metrics?.recovery_index || 0;
   const injuryRisk = Math.round((metrics?.injury_risk || 0) * 100);
+  const avgRpe = metrics?.avg_rpe7 || 0;
+  const avgSleep = metrics?.avg_sleep7 || 0;
 
   const getRiskColor = (risk: number) => {
     if (risk < 40) return "text-success";
@@ -41,6 +42,74 @@ const Dashboard = () => {
     return "bg-destructive/10";
   };
 
+  // TL;DR insights based on metrics
+  const getInsights = () => {
+    const insights: { type: "positive" | "warning" | "tip"; title: string; text: string }[] = [];
+
+    if (metrics) {
+      // Recovery insight
+      if (recoveryIndex >= 70) {
+        insights.push({
+          type: "positive",
+          title: "Great Recovery",
+          text: `Recovery Index at ${recoveryIndex}% – you're well-rested and ready for high-intensity work.`
+        });
+      } else if (recoveryIndex < 40) {
+        insights.push({
+          type: "warning",
+          title: "Low Recovery",
+          text: `Recovery Index only ${recoveryIndex}%. Consider a deload or rest day to prevent overtraining.`
+        });
+      }
+
+      // Injury risk insight
+      if (injuryRisk > 60) {
+        insights.push({
+          type: "warning",
+          title: "Elevated Risk",
+          text: `Injury risk at ${injuryRisk}%. Reduce intensity and focus on mobility/recovery sessions.`
+        });
+      } else if (injuryRisk < 30) {
+        insights.push({
+          type: "positive",
+          title: "Low Risk",
+          text: `Injury risk at ${injuryRisk}% – safe to push harder if goals require it.`
+        });
+      }
+
+      // Sleep insight
+      if (avgSleep < 6.5) {
+        insights.push({
+          type: "warning",
+          title: "Sleep Deficit",
+          text: `Averaging ${avgSleep.toFixed(1)}h sleep. Aim for 7-8h to optimize recovery.`
+        });
+      }
+
+      // Training load insight
+      if (trainingLoad > 2000) {
+        insights.push({
+          type: "tip",
+          title: "High Load Week",
+          text: `TL7 = ${trainingLoad}. Consider a lighter week next to consolidate gains.`
+        });
+      }
+    }
+
+    // Fallback if no data
+    if (insights.length === 0) {
+      insights.push({
+        type: "tip",
+        title: "Get Started",
+        text: "Add training sessions to see personalized insights and recommendations."
+      });
+    }
+
+    return insights.slice(0, 3); // Max 3 insights
+  };
+
+  const insights = getInsights();
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -51,16 +120,10 @@ const Dashboard = () => {
               <h1 className="text-3xl font-bold text-foreground">AthleteVision</h1>
               <p className="text-muted-foreground">Performance & Prevention Dashboard</p>
             </div>
-            <div className="flex gap-3">
-              <Button onClick={() => navigate("/data-input")} className="gap-2">
-                <Plus className="h-4 w-4" />
-                Add Training
-              </Button>
-              <Button variant="outline" onClick={() => navigate("/analysis")} className="gap-2">
-                <BarChart3 className="h-4 w-4" />
-                Analysis
-              </Button>
-            </div>
+            <Button onClick={() => navigate("/data-input")} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Add Training
+            </Button>
           </div>
         </div>
       </header>
@@ -72,14 +135,14 @@ const Dashboard = () => {
           {/* Training Load Card */}
           <Card className="transition-all hover:shadow-lg">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Training Load</CardTitle>
+              <CardTitle className="text-sm font-medium">Training Load (7d)</CardTitle>
               <Activity className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-primary">{trainingLoad}</div>
-              <Progress value={trainingLoad} className="mt-3" />
+              <Progress value={Math.min((trainingLoad / 3000) * 100, 100)} className="mt-3" />
               <p className="text-xs text-muted-foreground mt-2">
-                <span className="text-accent font-medium">+5%</span> from last week
+                Avg RPE: <span className="font-medium">{avgRpe.toFixed(1)}</span>
               </p>
             </CardContent>
           </Card>
@@ -94,7 +157,7 @@ const Dashboard = () => {
               <div className="text-3xl font-bold text-success">{recoveryIndex}%</div>
               <Progress value={recoveryIndex} className="mt-3 [&>div]:bg-success" />
               <p className="text-xs text-muted-foreground mt-2">
-                Moderate recovery state
+                Avg Sleep: <span className="font-medium">{avgSleep.toFixed(1)}h</span>
               </p>
             </CardContent>
           </Card>
@@ -120,10 +183,44 @@ const Dashboard = () => {
                 }`} 
               />
               <p className="text-xs text-muted-foreground mt-2">
-                Low risk - continue training
+                {injuryRisk < 40 ? "Low risk – train on" : injuryRisk < 70 ? "Moderate – monitor closely" : "High – prioritize recovery"}
               </p>
             </CardContent>
           </Card>
+        </div>
+
+        {/* TL;DR Insights */}
+        <div className="grid gap-4 md:grid-cols-3 mb-8">
+          {insights.map((insight, i) => (
+            <Card 
+              key={i} 
+              className={
+                insight.type === "positive" 
+                  ? "bg-success/10 border-success/20" 
+                  : insight.type === "warning" 
+                  ? "bg-warning/10 border-warning/20" 
+                  : "bg-primary/10 border-primary/20"
+              }
+            >
+              <CardHeader className="pb-2">
+                <CardTitle className={`text-sm font-medium flex items-center gap-2 ${
+                  insight.type === "positive" 
+                    ? "text-success" 
+                    : insight.type === "warning" 
+                    ? "text-warning" 
+                    : "text-primary"
+                }`}>
+                  {insight.type === "positive" && <Zap className="h-4 w-4" />}
+                  {insight.type === "warning" && <AlertTriangle className="h-4 w-4" />}
+                  {insight.type === "tip" && <Lightbulb className="h-4 w-4" />}
+                  {insight.title}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-foreground">{insight.text}</p>
+              </CardContent>
+            </Card>
+          ))}
         </div>
 
         {/* Action Cards */}
